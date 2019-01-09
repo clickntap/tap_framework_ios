@@ -1,14 +1,45 @@
 #include "TapController.h"
+#include "TapButton.h"
 
-@interface TapBookController : TapController {
+typedef NS_ENUM(NSInteger, BookNavigationType) { BookNavigationTypeUnknown, BookNavigationTypeWithArrowsOnly, BookNavigationTypeWithSwipeOnly, BookNavigationTypeWithDefault };
+
+typedef NS_ENUM(NSInteger, BookPageSetupType) { BookPageSetupTypeUnknown, BookPageSetupTypeActive, BookPageSetupTypeDisabled };
+
+@interface TapBookController : TapController<UIScrollViewDelegate> {
+    BookNavigationType navigationType;
+    UIScrollView *container;
+    UIScrollView *horizontalContainer;
+    UIView *stage;
+    
+    int numberOfPages;
+    int currentPage;
+    
+    UIView *bgLeftArrow;
+    UIView *bgRightArrow;
+    TapButton *btnBackOverlay;
+    TapButton *btnShowThumbsOverlay;
+    TapButton *btnLeftArrow;
+    TapButton *btnRightArrow;
+    UIButton *btnNextPage;
+    UIButton *btnPrevPage;
+    
+    UIView *footer;
+    //       BookNavigator *navigator;
+    
+    TapButton *btnShowThumbs;
+    
+    BOOL navigatorOn;
+    BOOL uiOn;
+    BOOL prevUiOn;
+    BOOL standaloneMode;
+    BOOL togoMode;
+    BOOL showArrows;
 }
+@property BOOL showArrows;
 @end
 // #import "TogoButton.h"
 // #import "TogoController.h"
 //
-// typedef NS_ENUM(NSInteger, BookNavigationType) { BookNavigationTypeUnknown, BookNavigationTypeWithArrowsOnly, BookNavigationTypeWithSwipeOnly, BookNavigationTypeWithDefault };
-//
-// typedef NS_ENUM(NSInteger, BookPageSetupType) { BookPageSetupTypeUnknown, BookPageSetupTypeActive, BookPageSetupTypeDisabled };
 //
 // /***************************************************************
 //  ** PdfOperation ***********************************************
@@ -178,49 +209,4 @@
 // @end
 //
 // @class TogoWebSvg;
-//
-// /***************************************************************
-//  ** TogoBookController *****************************************
-//  ***************************************************************/
-//
-// @interface TogoBookController : TogoController <UIScrollViewDelegate> {
-//   BookNavigationType navigationType;
-//   UIScrollView *container;
-//   UIScrollView *horizontalContainer;
-//   UIView *stage;
-//
-//   int numberOfPages;
-//   int currentPage;
-//
-//   UIView *bgLeftArrow;
-//   UIView *bgRightArrow;
-//   TogoButton *btnBackOverlay;
-//   TogoButton *btnShowThumbsOverlay;
-//   TogoButton *btnLeftArrow;
-//   TogoButton *btnRightArrow;
-//   UIButton *btnNextPage;
-//   UIButton *btnPrevPage;
-//
-//   UIView *footer;
-//   BookNavigator *navigator;
-//
-//   TogoButton *btnShowThumbs;
-//
-//   BOOL navigatorOn;
-//   BOOL uiOn;
-//   BOOL prevUiOn;
-//
-//   //  BookExtraView* extraView;
-//   //  UIButton* bgExtraView;
-//
-//   BOOL standaloneMode;
-//   BOOL togoMode;
-//   BOOL showArrows;
-//
-//   //  UIImageView* debugImage;
-//   TogoWebSvg *logo;
-// }
-//
-// @property BOOL showArrows;
-//
-// @end
+
