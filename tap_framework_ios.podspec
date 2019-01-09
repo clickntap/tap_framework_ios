@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'tap_framework_ios'
-  s.version          = '2.0.2'
+  s.version          = '2.0.3'
   s.summary          = 'Tap is a framework to build tappable iOS Apps'
   s.description      = <<-DESC
     Tappable Apps always needs Clickable Platforms :)
