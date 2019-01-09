@@ -1,11 +1,10 @@
 Pod::Spec.new do |s|
   s.name             = 'tap_framework_ios'
-  s.version          = '2.0.0'
+  s.version          = '2.0.1'
   s.summary          = 'Tap is a framework to build tappable iOS Apps'
   s.description      = <<-DESC
-    Tap is a framework to build tappable iOS Apps
+    Tappable Apps always needs Clickable Platforms :)
     DESC
-
   s.homepage         = 'https://github.com/clickntap/tap_framework_ios'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
   s.author           = { 'Tonino Mendicino' => 'tonino@clickntap.com' }

@@ -1,2 +1,2 @@
 # Tap Framework iOS
- Tap is a framework to build tappable iOS Apps
+Tappable Apps always needs Clickable Platforms :)
