@@ -2,7 +2,7 @@
 
 @interface TapBookController : TapController {
 }
-
+@end
 // #import "TogoButton.h"
 // #import "TogoController.h"
 //
