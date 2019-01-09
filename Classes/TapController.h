@@ -1,7 +1,9 @@
 #import <UIKit/UIKit.h>
 
 @interface TapController : UIViewController {
+
 }
+
 @end
 // #import <UIKit/UIKit.h>
 // //#import <GoogleAnalytics-iOS-SDK/GAI.h>
