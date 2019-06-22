@@ -11,9 +11,9 @@ Pod::Spec.new do |s|
   s.source           = { :git => 'https://github.com/clickntap/tap_framework_ios.git', :tag => s.version.to_s }
   s.ios.deployment_target = '10.0'
   s.source_files = 'Classes/**/*'
-  s.resource_bundles = {
-    'tap_framework_ios' => ['Assets/*.m4a','Assets/*.ttf']
-  }
+ # s.resource_bundles = {
+ #   'tap_framework_ios' => ['Assets/*.m4a','Assets/*.ttf']
+ # }
   s.dependency 'AFNetworking'
   s.dependency 'Colorkit'
   s.dependency 'MMMaterialDesignSpinner'
