@@ -2,9 +2,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface TapView : UIView {
-    CGSize previousSize;
-}
+@interface TapAppNavigationController : UINavigationController
 
 @end
 

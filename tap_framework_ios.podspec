@@ -15,7 +15,8 @@ Pod::Spec.new do |s|
     'tap_framework_ios' => ['Assets/*.m4a','Assets/*.ttf']
   }
   s.dependency 'AFNetworking'
-  s.dependency 'UIColor-Utilities'
+  s.dependency 'Colorkit'
   s.dependency 'MMMaterialDesignSpinner'
   s.dependency 'ZipArchive'
+  s.dependency 'FBSDKLoginKit'
 end
