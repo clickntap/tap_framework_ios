@@ -3,7 +3,7 @@
 [![Platform](https://api.clickntap.com/Apple%20iOS/Platform.svg)](https://cocoapods.org/pods/tap_framework_ios)
 
 # Tap Framework iOS
-Tappable Apps always needs Clickable Platforms :)
+## Tappable Apps always needs Clickable Platforms :)
 
 You want to add pod 'tap_framework_ios', '~> 3.0' similar to the following to your Podfile:
 
