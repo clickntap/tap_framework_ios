@@ -7,16 +7,16 @@
 
 You want to add pod 'tap_framework_ios', '~> 3.0' similar to the following to your Podfile:
 
-``
+```pod
 target 'MyApp' do
   pod 'tap_framework_ios', '~> 3.0'
 end
-``
+```
 
 Then run a pod install inside your terminal, or from CocoaPods.app.
 
 Alternatively to give it a test run, run the command:
 
-``
+```cocoapod
 pod try tap_framework_ios
-``
+```
