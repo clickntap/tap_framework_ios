@@ -4,3 +4,19 @@
 
 # Tap Framework iOS
 Tappable Apps always needs Clickable Platforms :)
+
+You want to add pod 'tap_framework_ios', '~> 3.0' similar to the following to your Podfile:
+
+``
+target 'MyApp' do
+  pod 'tap_framework_ios', '~> 3.0'
+end
+``
+
+Then run a pod install inside your terminal, or from CocoaPods.app.
+
+Alternatively to give it a test run, run the command:
+
+``
+pod try tap_framework_ios
+``
