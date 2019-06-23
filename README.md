@@ -4,25 +4,16 @@
 
 # Tap Framework iOS
 
+Tap is a framework to build tappable iOS Apps.
+
 Tappable Apps always needs Clickable Platforms :)
 
-You want to add pod 'tap_framework_ios', '~> 3.0' similar to the following to your Podfile:
-
 ## Use with Cocoapod
-```
+```gradle
 
-target 'MyApp' do
-  pod 'tap_framework_ios', '~> 3.0'
-end
+ pod 'tap_framework_ios', '~> 3.0'
 
 ```
 
-Then run a pod install inside your terminal, or from CocoaPods.app.
-
-Alternatively to give it a test run, run the command:
-
-```
-
-pod try tap_framework_ios
-
-```
+## Support or Contact
+Having trouble with Tap Framework? Contact info@clickntap.com and we’ll help you sort it out.
