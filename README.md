@@ -11,7 +11,7 @@ Tappable Apps always needs Clickable Platforms :)
 ## Use with Cocoapod
 ```gradle
 
- pod 'tap_framework_ios', '~> 3.0'
+ pod 'tap_framework_ios'
 
 ```
 
