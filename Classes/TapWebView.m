@@ -365,6 +365,11 @@
                 [[NSNotificationCenter defaultCenter] postNotificationName:@"needsSetupUi" object:nil];
             }
         }
+        if([@"proximity" compare:data[@"type"]] == NSOrderedSame) {
+            peerID = [[MCPeerID alloc] initWithDisplayName:[[UIDevice currentDevice] name]];
+            mcSession = [[MCSession alloc] initWithPeer:peerID securityIdentity:nil encryptionPreference:MCEncryptionNone];
+            mcSession.delegate = self;
+        }
     }
     if([@"set" compare:data[@"what"]] == NSOrderedSame) {
         [[NSUserDefaults standardUserDefaults] setObject:data[@"value"] forKey:data[@"name"]];
@@ -582,6 +587,10 @@
                     [self js:js];
                 }
             }
+            if([@"remote-video" isEqualToString:conf[@"component"]]) {
+                view = [[UIImageView alloc] init];
+                [view setBackgroundColor:[UIColor blackColor]];
+            }
             if([@"facebook-login" isEqualToString:conf[@"component"]]) {
                 //                view = [[FBSDKLoginButton alloc] init];
                 //                ((FBSDKLoginButton*)view).readPermissions = @[@"public_profile", @"email"];
@@ -657,6 +666,29 @@
             }
         }
         [viewComponents removeObjectsInArray:offViewComponents];
+    }
+    if([@"proximity-invite" compare:data[@"what"]] == NSOrderedSame) {
+        mcAdvertiserAssistant = [[MCAdvertiserAssistant alloc] initWithServiceType:data[@"name"] discoveryInfo:nil session:mcSession];
+        [mcAdvertiserAssistant start];
+    }
+    if([@"proximity-find" compare:data[@"what"]] == NSOrderedSame) {
+        mcBrowserViewController = [[MCBrowserViewController alloc] initWithServiceType:data[@"name"] session:mcSession];
+        [mcBrowserViewController setMaximumNumberOfPeers:1];
+        [mcBrowserViewController setMinimumNumberOfPeers:1];
+        mcBrowserViewController.delegate = self;
+        [[[TapApp sharedInstance] navigationController] presentViewController:mcBrowserViewController animated:YES completion:nil];
+    }
+    if([@"proximity-disconnect" compare:data[@"what"]] == NSOrderedSame) {
+        if(appPeerID != nil) {
+            [mcSession disconnect];
+            [self disconnectPeer];
+        }
+    }
+    if([@"proximity-message" compare:data[@"what"]] == NSOrderedSame) {
+        if(appPeerID != nil) {
+            NSData* messageData = [[TapUtils json:data[@"message"]] dataUsingEncoding:NSUTF8StringEncoding];
+            [mcSession sendData:messageData toPeers:@[appPeerID] withMode:MCSessionSendDataReliable error:nil];
+        }
     }
     if([@"confirm" compare:data[@"what"]] == NSOrderedSame) {
         UIAlertController* alert = [UIAlertController alertControllerWithTitle:data[@"title"] message:data[@"message"] preferredStyle:UIAlertControllerStyleAlert];
@@ -767,7 +799,7 @@
     if([@"pkpass-check" compare:data[@"what"]] == NSOrderedSame) {
     }
     if([@"pkpass-add" compare:data[@"what"]] == NSOrderedSame) {
-            [self waitOn];
+        [self waitOn];
         NSURL *directory = [[NSFileManager defaultManager] URLForDirectory:NSDocumentDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:NO error:nil];;
         NSURL *fileURL = [directory URLByAppendingPathComponent:[NSString stringWithFormat:@"%@.%@", [TapUtils md5:[NSString stringWithFormat:@"%@", data[@"url"]]], @"pkpass"]];
         NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"%@", data[@"url"]]]];
@@ -839,6 +871,95 @@
             }
         }];
     }
+}
+
+- (void)session:(MCSession *)session peer:(MCPeerID *)peerID didChangeState:(MCSessionState)state {
+    switch (state) {
+        case MCSessionStateConnected: {
+            appPeerID = peerID;
+            [self browserViewControllerDidFinish:mcBrowserViewController];
+            NSString* js = [NSString stringWithFormat:@"appProximityConnected()"];
+            [self js:js];
+        } break;
+        case MCSessionStateConnecting: {
+            appPeerID = nil;
+            NSString* js = [NSString stringWithFormat:@"appProximityConnecting()"];
+            [self js:js];
+            NSLog(@"MCSessionStateConnecting %@", peerID.displayName);
+        } break;
+        case MCSessionStateNotConnected: {
+            [self disconnectPeer];
+            NSLog(@"MCSessionStateNotConnected %@", peerID.displayName);
+        } break;
+    }
+}
+
+-(void)browserViewControllerDidFinish:(MCBrowserViewController *)browserViewController {
+    [[[TapApp sharedInstance] navigationController] dismissViewControllerAnimated:YES completion:nil];
+    mcBrowserViewController.delegate = nil;
+    mcBrowserViewController = nil;
+}
+
+- (void)browserViewControllerWasCancelled:(MCBrowserViewController *)browserViewController {
+    [self browserViewControllerDidFinish:browserViewController];
+}
+
+- (void)session:(MCSession *)session didReceiveData:(NSData *)data fromPeer:(MCPeerID *)peerID {
+    TapAppViewComponent* theViewComponent = nil;
+    for(TapAppViewComponent* viewComponent in viewComponents) {
+        if([viewComponent.conf[@"component"] isEqualToString:@"remote-video"]) {
+            theViewComponent = viewComponent;
+            break;
+        }
+    }
+    if(theViewComponent != nil) {
+        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+            UIImage* image = [UIImage imageWithData:data];
+            if(image.size.width != 0 && image.size.height != 0) {
+                ((UIImageView*)theViewComponent.view).image = image;
+            } else {
+                NSString* js = [NSString stringWithFormat:@"appProximityMessage(%@)", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]];
+                NSLog(@"%@", js);
+                [self js:js];
+            }
+        }];
+    } else {
+        NSString* js = [NSString stringWithFormat:@"appProximityMessage(%@)", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]];
+        NSLog(@"%@", js);
+        [self js:js];
+    }
+}
+
+- (void)session:(MCSession *)session didReceiveStream:(NSInputStream *)stream withName:(NSString *)streamName fromPeer:(MCPeerID *)peerID {
+    NSLog(@"didReceiveStream %@", streamName);
+}
+
+- (void)session:(MCSession *)session didStartReceivingResourceWithName:(NSString *)resourceName fromPeer:(MCPeerID *)peerID withProgress:(NSProgress *)progress {
+}
+
+- (void) session:(MCSession *)session didFinishReceivingResourceWithName:(NSString *)resourceName fromPeer:(MCPeerID *)peerID atURL:(nullable NSURL *)localURL withError:(nullable NSError *)error {
+    NSData* file = [NSData dataWithContentsOfURL:localURL];
+    NSString* base64 = [file base64EncodedStringWithOptions:NSDataBase64EncodingEndLineWithLineFeed];
+    NSLog(@"%@", resourceName);
+    [self js:[NSString stringWithFormat:@"appProximityResource('%@','%@')", resourceName, base64]];
+}
+
+- (void)disconnectPeer {
+    appPeerID = nil;
+    TapAppViewComponent* theViewComponent = nil;
+    for(TapAppViewComponent* viewComponent in viewComponents) {
+        if([viewComponent.conf[@"component"] isEqualToString:@"remote-video"]) {
+            theViewComponent = viewComponent;
+            break;
+        }
+    }
+    if(theViewComponent != nil) {
+        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+            ((UIImageView*)theViewComponent.view).image = nil;
+        }];
+    }
+    NSString* js = [NSString stringWithFormat:@"appProximityNotConnected()"];
+    [self js:js];
 }
 
 - (void)sendmail:(NSString*)mail {

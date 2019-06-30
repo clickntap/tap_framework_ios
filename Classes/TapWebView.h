@@ -6,6 +6,7 @@
 #import <MessageUI/MessageUI.h>
 #import <MessageUI/MFMailComposeViewController.h>
 #import <FBSDKLoginKit/FBSDKLoginKit.h>
+#import <MultipeerConnectivity/MultipeerConnectivity.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -15,7 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-@interface TapWebView : UIView<WKNavigationDelegate, WKScriptMessageHandler, UNUserNotificationCenterDelegate, FBSDKLoginButtonDelegate, CLLocationManagerDelegate, MKMapViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, SFSafariViewControllerDelegate, MFMailComposeViewControllerDelegate> {
+@interface TapWebView : UIView<MCSessionDelegate, MCBrowserViewControllerDelegate, WKNavigationDelegate, WKScriptMessageHandler, UNUserNotificationCenterDelegate, FBSDKLoginButtonDelegate, CLLocationManagerDelegate, MKMapViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, SFSafariViewControllerDelegate, MFMailComposeViewControllerDelegate> {
     WKWebViewConfiguration *webViewConfiguration;
     WKFullScreenWebView *webView;
     NSMutableArray* viewComponents;
@@ -25,6 +26,11 @@ NS_ASSUME_NONNULL_BEGIN
     NSMutableDictionary* images;
     CLLocationManager* locationManager;
     TapCamera* camera;
+    MCPeerID*  peerID;
+    MCPeerID*  appPeerID;
+    MCSession*  mcSession;
+    MCAdvertiserAssistant*  mcAdvertiserAssistant;
+    MCBrowserViewController* mcBrowserViewController;
 }
 
 - (WKNavigation *)loadRequest:(NSURLRequest *)request;
