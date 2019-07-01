@@ -203,6 +203,7 @@
         }
     }
     [self setNeedsDisplay];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"painterChanged" object:nil];
 }
 
 - (CGRect)addPointsOfType:(PointType)type forTouches:(NSArray *)touches line:(Line *)line currentUpdateRect:(CGRect)updateRect {

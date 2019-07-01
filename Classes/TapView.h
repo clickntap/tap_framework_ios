@@ -6,6 +6,8 @@ NS_ASSUME_NONNULL_BEGIN
     CGSize previousSize;
 }
 
+-(UIImage*)grab;
+
 @end
 
 NS_ASSUME_NONNULL_END

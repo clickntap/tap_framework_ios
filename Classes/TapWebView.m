@@ -95,6 +95,7 @@
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(viewComponentRemove:) name:@"viewComponentRemove" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cameraMetadataObject:) name:@"cameraMetadataObject" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(remoteScreenTouch:) name:@"remoteScreenTouch" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(painterLink) name:@"painterChanged" object:nil];
 }
 
 - (void)remoteScreenTouch:(NSNotification*)notification {
@@ -102,6 +103,34 @@
     if(appPeerID != nil) {
         NSData* messageData = [[TapUtils json:touch] dataUsingEncoding:NSUTF8StringEncoding];
         [mcSession sendData:messageData toPeers:@[appPeerID] withMode:MCSessionSendDataReliable error:nil];
+    }
+}
+
+- (void)painterLink {
+    if(appPeerID != nil) {
+        NSMutableDictionary* message = [[NSMutableDictionary alloc] init];
+        [message setObject:@"painter-link" forKey:@"what"];
+        NSData* messageData = [[TapUtils json:message] dataUsingEncoding:NSUTF8StringEncoding];
+        [self->mcSession sendData:messageData toPeers:@[self->appPeerID] withMode:MCSessionSendDataReliable error:nil];
+        if(parent) {
+            [parent js:@"appPainterLinked()"];
+        } else {
+            [self js:@"appPainterLinked()"];
+        }
+    }
+}
+
+- (void)painterUnlink {
+    if(appPeerID != nil) {
+        NSMutableDictionary* message = [[NSMutableDictionary alloc] init];
+        [message setObject:@"painter-unlink" forKey:@"what"];
+        NSData* messageData = [[TapUtils json:message] dataUsingEncoding:NSUTF8StringEncoding];
+        [self->mcSession sendData:messageData toPeers:@[self->appPeerID] withMode:MCSessionSendDataReliable error:nil];
+        if(parent) {
+            [parent js:@"appPainterUnlinked()"];
+        } else {
+            [self js:@"appPainterUnlinked()"];
+        }
     }
 }
 
@@ -572,7 +601,27 @@
                     [UIView setAnimationDuration:0.5];
                     painter.alpha = 0.2;
                     [UIView commitAnimations];
-               }
+                }
+            }
+        }
+    }
+    if([@"painter-link" compare:data[@"what"]] == NSOrderedSame) {
+        [self painterLink];
+    }
+    if([@"painter-unlink" compare:data[@"what"]] == NSOrderedSame) {
+        [self painterUnlink];
+    }
+    if([@"painter-frame" compare:data[@"what"]] == NSOrderedSame) {
+        for(TapAppViewComponent* viewComponent in viewComponents) {
+            if([viewComponent.conf[@"component"] isEqualToString:@"painter"]) {
+                if([viewComponent.conf[@"id"] longValue] == [data[@"id"] longValue]) {
+                    TapPainter * painter = (TapPainter *)viewComponent.view;
+                    UIImage* image = [painter grab];
+                    if(appPeerID != nil) {
+                        NSData* imageAsData = UIImagePNGRepresentation(image);
+                        [mcSession sendData:imageAsData toPeers:@[appPeerID] withMode:MCSessionSendDataReliable error:nil];
+                    }
+                }
             }
         }
     }
@@ -984,6 +1033,15 @@
     [self browserViewControllerDidFinish:browserViewController];
 }
 
+-(void)remoteReady {
+    if(self->appPeerID != nil) {
+        NSMutableDictionary* message = [[NSMutableDictionary alloc] init];
+        [message setObject:@"remote-ready" forKey:@"what"];
+        NSData* messageData = [[TapUtils json:message] dataUsingEncoding:NSUTF8StringEncoding];
+        [self->mcSession sendData:messageData toPeers:@[self->appPeerID] withMode:MCSessionSendDataReliable error:nil];
+    }
+}
+
 - (void)session:(MCSession *)session didReceiveData:(NSData *)data fromPeer:(MCPeerID *)peerID {
     TapAppViewComponent* theViewComponent = nil;
     for(TapAppViewComponent* viewComponent in viewComponents) {
@@ -997,12 +1055,7 @@
             UIImage* image = [UIImage imageWithData:data];
             if(image.size.width != 0 && image.size.height != 0) {
                 ((UIImageView*)theViewComponent.view).image = image;
-                if(self->appPeerID != nil) {
-                    NSMutableDictionary* message = [[NSMutableDictionary alloc] init];
-                    [message setObject:@"remote-ready" forKey:@"what"];
-                    NSData* messageData = [[TapUtils json:message] dataUsingEncoding:NSUTF8StringEncoding];
-                    [self->mcSession sendData:messageData toPeers:@[self->appPeerID] withMode:MCSessionSendDataReliable error:nil];
-                }
+                [self remoteReady];
             } else {
                 NSString* js = [NSString stringWithFormat:@"appProximityMessage(%@)", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]];
                 NSLog(@"%@", js);
