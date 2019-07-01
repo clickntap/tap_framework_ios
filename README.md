@@ -1,4 +1,4 @@
-[![Version](https://api.clickntap.com/3.0.0/Tap%20Framework%20iOS.svg)](https://cocoapods.org/pods/tap_framework_ios)
+[![Version](https://api.clickntap.com/3.1.0/Tap%20Framework%20iOS.svg)](https://cocoapods.org/pods/tap_framework_ios)
 [![License](https://api.clickntap.com/MIT/License.svg)](https://cocoapods.org/pods/tap_framework_ios)
 [![Platform](https://api.clickntap.com/Apple%20iOS/Platform.svg)](https://cocoapods.org/pods/tap_framework_ios)
 
