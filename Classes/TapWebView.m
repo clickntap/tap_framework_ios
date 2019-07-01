@@ -5,6 +5,8 @@
 #import "TapUtils.h"
 #import "TapWebVideoView.h"
 #import "TapAppViewComponent.h"
+#import "TapRemoteScreen.h"
+#import "TapPainter.h"
 #import <MMMaterialDesignSpinner/MMMaterialDesignSpinner.h>
 #import <Colorkit/Colorkit.h>
 #import <AFNetworking/AFNetworking.h>
@@ -81,17 +83,26 @@
     swipeUp.direction = UISwipeGestureRecognizerDirectionUp;
     UISwipeGestureRecognizer *swipeDown = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(swipeDown)];
     swipeDown.direction = UISwipeGestureRecognizerDirectionDown;
-    [webView.scrollView addGestureRecognizer:swipeLeft];
-    [webView.scrollView addGestureRecognizer:swipeRight];
-    [webView.scrollView addGestureRecognizer:swipeUp];
-    [webView.scrollView addGestureRecognizer:swipeDown];
-    [self addGestureRecognizer:swipeLeft];
-    [self addGestureRecognizer:swipeRight];
-    [self addGestureRecognizer:swipeUp];
-    [self addGestureRecognizer:swipeDown];
+    //    [webView.scrollView addGestureRecognizer:swipeLeft];
+    //    [webView.scrollView addGestureRecognizer:swipeRight];
+    //    [webView.scrollView addGestureRecognizer:swipeUp];
+    //    [webView.scrollView addGestureRecognizer:swipeDown];
+    //    [self addGestureRecognizer:swipeLeft];
+    //    [self addGestureRecognizer:swipeRight];
+    //    [self addGestureRecognizer:swipeUp];
+    //    [self addGestureRecognizer:swipeDown];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(js:) name:@"js" object:self];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(viewComponentRemove:) name:@"viewComponentRemove" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cameraMetadataObject:) name:@"cameraMetadataObject" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(remoteScreenTouch:) name:@"remoteScreenTouch" object:nil];
+}
+
+- (void)remoteScreenTouch:(NSNotification*)notification {
+    NSDictionary* touch = notification.object;
+    if(appPeerID != nil) {
+        NSData* messageData = [[TapUtils json:touch] dataUsingEncoding:NSUTF8StringEncoding];
+        [mcSession sendData:messageData toPeers:@[appPeerID] withMode:MCSessionSendDataReliable error:nil];
+    }
 }
 
 - (void)swipeLeft {
@@ -505,6 +516,66 @@
             }
         }
     }
+    if([@"painter-color" compare:data[@"what"]] == NSOrderedSame) {
+        for(TapAppViewComponent* viewComponent in viewComponents) {
+            if([viewComponent.conf[@"component"] isEqualToString:@"painter"]) {
+                if([viewComponent.conf[@"id"] longValue] == [data[@"id"] longValue]) {
+                    TapPainter * painter = (TapPainter *)viewComponent.view;
+                    [painter painter].lineColor = [UIColor colorWithHexString:data[@"color"]];
+                    NSLog(@"%@", [painter painter].lineColor);
+                }
+            }
+        }
+    }
+    if([@"painter-size" compare:data[@"what"]] == NSOrderedSame) {
+        for(TapAppViewComponent* viewComponent in viewComponents) {
+            if([viewComponent.conf[@"component"] isEqualToString:@"painter"]) {
+                if([viewComponent.conf[@"id"] longValue] == [data[@"id"] longValue]) {
+                    TapPainter * painter = (TapPainter *)viewComponent.view;
+                    [painter painter].lineSize = [data[@"size"] intValue];
+                    NSLog(@"%d", [painter painter].lineSize);
+                }
+            }
+        }
+    }  
+    if([@"painter-clear" compare:data[@"what"]] == NSOrderedSame) {
+        for(TapAppViewComponent* viewComponent in viewComponents) {
+            if([viewComponent.conf[@"component"] isEqualToString:@"painter"]) {
+                if([viewComponent.conf[@"id"] longValue] == [data[@"id"] longValue]) {
+                    TapPainter * painter = (TapPainter *)viewComponent.view;
+                    [[painter painter] clear];
+                }
+            }
+        }
+    }
+    if([@"painter-on" compare:data[@"what"]] == NSOrderedSame) {
+        for(TapAppViewComponent* viewComponent in viewComponents) {
+            if([viewComponent.conf[@"component"] isEqualToString:@"painter"]) {
+                if([viewComponent.conf[@"id"] longValue] == [data[@"id"] longValue]) {
+                    TapPainter * painter = (TapPainter *)viewComponent.view;
+                    painter.userInteractionEnabled = YES;
+                    [UIView beginAnimations:nil context:nil];
+                    [UIView setAnimationDuration:0.5];
+                    painter.alpha = 1;
+                    [UIView commitAnimations];
+                }
+            }
+        }
+    }
+    if([@"painter-off" compare:data[@"what"]] == NSOrderedSame) {
+        for(TapAppViewComponent* viewComponent in viewComponents) {
+            if([viewComponent.conf[@"component"] isEqualToString:@"painter"]) {
+                if([viewComponent.conf[@"id"] longValue] == [data[@"id"] longValue]) {
+                    TapPainter * painter = (TapPainter *)viewComponent.view;
+                    painter.userInteractionEnabled = NO;
+                    [UIView beginAnimations:nil context:nil];
+                    [UIView setAnimationDuration:0.5];
+                    painter.alpha = 0.2;
+                    [UIView commitAnimations];
+               }
+            }
+        }
+    }
     if([@"animate" compare:data[@"what"]] == NSOrderedSame) {
         for(TapAppViewComponent* viewComponent in viewComponents) {
             if([viewComponent.conf[@"component"] isEqualToString:data[@"component"]]) {
@@ -587,9 +658,18 @@
                     [self js:js];
                 }
             }
-            if([@"remote-video" isEqualToString:conf[@"component"]]) {
-                view = [[UIImageView alloc] init];
+            if([@"remote-screen" isEqualToString:conf[@"component"]]) {
+                view = [[TapRemoteScreen alloc] init];
                 [view setBackgroundColor:[UIColor blackColor]];
+            }
+            if([@"painter" isEqualToString:conf[@"component"]]) {
+                view = [[TapPainter alloc] init];
+                if(conf[@"color"] != nil) {
+                    [((TapPainter*)view) painter].lineColor = [UIColor colorWithHexString:conf[@"color"]];
+                }
+                if(conf[@"size"] != nil) {
+                    [((TapPainter*)view) painter].lineSize = [conf[@"size"] intValue];
+                }
             }
             if([@"facebook-login" isEqualToString:conf[@"component"]]) {
                 //                view = [[FBSDKLoginButton alloc] init];
@@ -907,7 +987,7 @@
 - (void)session:(MCSession *)session didReceiveData:(NSData *)data fromPeer:(MCPeerID *)peerID {
     TapAppViewComponent* theViewComponent = nil;
     for(TapAppViewComponent* viewComponent in viewComponents) {
-        if([viewComponent.conf[@"component"] isEqualToString:@"remote-video"]) {
+        if([viewComponent.conf[@"component"] isEqualToString:@"remote-screen"]) {
             theViewComponent = viewComponent;
             break;
         }
@@ -917,6 +997,12 @@
             UIImage* image = [UIImage imageWithData:data];
             if(image.size.width != 0 && image.size.height != 0) {
                 ((UIImageView*)theViewComponent.view).image = image;
+                if(self->appPeerID != nil) {
+                    NSMutableDictionary* message = [[NSMutableDictionary alloc] init];
+                    [message setObject:@"remote-ready" forKey:@"what"];
+                    NSData* messageData = [[TapUtils json:message] dataUsingEncoding:NSUTF8StringEncoding];
+                    [self->mcSession sendData:messageData toPeers:@[self->appPeerID] withMode:MCSessionSendDataReliable error:nil];
+                }
             } else {
                 NSString* js = [NSString stringWithFormat:@"appProximityMessage(%@)", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]];
                 NSLog(@"%@", js);
@@ -948,7 +1034,7 @@
     appPeerID = nil;
     TapAppViewComponent* theViewComponent = nil;
     for(TapAppViewComponent* viewComponent in viewComponents) {
-        if([viewComponent.conf[@"component"] isEqualToString:@"remote-video"]) {
+        if([viewComponent.conf[@"component"] isEqualToString:@"remote-screen"]) {
             theViewComponent = viewComponent;
             break;
         }
