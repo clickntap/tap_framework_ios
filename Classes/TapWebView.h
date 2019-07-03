@@ -7,6 +7,7 @@
 #import <MessageUI/MFMailComposeViewController.h>
 #import <FBSDKLoginKit/FBSDKLoginKit.h>
 #import <MultipeerConnectivity/MultipeerConnectivity.h>
+#import <CocoaAsyncSocket/GCDAsyncSocket.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -16,7 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-@interface TapWebView : UIView<MCSessionDelegate, MCBrowserViewControllerDelegate, WKNavigationDelegate, WKScriptMessageHandler, UNUserNotificationCenterDelegate, FBSDKLoginButtonDelegate, CLLocationManagerDelegate, MKMapViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, SFSafariViewControllerDelegate, MFMailComposeViewControllerDelegate> {
+@interface TapWebView : UIView<MCSessionDelegate, MCBrowserViewControllerDelegate, WKNavigationDelegate, WKScriptMessageHandler, UNUserNotificationCenterDelegate, FBSDKLoginButtonDelegate, CLLocationManagerDelegate, MKMapViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, SFSafariViewControllerDelegate, MFMailComposeViewControllerDelegate, GCDAsyncSocketDelegate> {
     WKWebViewConfiguration *webViewConfiguration;
     WKFullScreenWebView *webView;
     NSMutableArray* viewComponents;
@@ -31,6 +32,13 @@ NS_ASSUME_NONNULL_BEGIN
     MCSession*  mcSession;
     MCAdvertiserAssistant*  mcAdvertiserAssistant;
     MCBrowserViewController* mcBrowserViewController;
+    GCDAsyncSocket* listenSocket;
+    GCDAsyncSocket* socket;
+    GCDAsyncSocket* connectedSocket;
+    int listenPort;
+    NSUInteger remoteImageSize;
+    NSMutableData* remoteImageData;
+    NSData* remoteFrame;
 }
 
 - (WKNavigation *)loadRequest:(NSURLRequest *)request;

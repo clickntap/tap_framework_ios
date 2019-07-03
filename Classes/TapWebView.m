@@ -284,7 +284,7 @@
 
 - (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
     NSDictionary* data = message.body;
-    NSLog(@"%@", data);
+    //NSLog(@"%@", data);
     if([@"context" compare:data[@"what"]] == NSOrderedSame) {
         long deviceId = [[[NSUserDefaults standardUserDefaults] objectForKey:@"deviceId"] longValue];
         long userId = [[[NSUserDefaults standardUserDefaults] objectForKey:@"userId"] longValue];
@@ -566,7 +566,7 @@
                 }
             }
         }
-    }  
+    }
     if([@"painter-clear" compare:data[@"what"]] == NSOrderedSame) {
         for(TapAppViewComponent* viewComponent in viewComponents) {
             if([viewComponent.conf[@"component"] isEqualToString:@"painter"]) {
@@ -1000,6 +1000,104 @@
             }
         }];
     }
+    if([@"socket-server" compare:data[@"what"]] == NSOrderedSame) {
+        NSLog(@"IP: %@", [TapUtils ip]);
+        listenSocket = [[GCDAsyncSocket alloc] initWithDelegate:self delegateQueue:dispatch_get_main_queue()];
+        NSError *err = nil;
+        listenPort = 10000;
+        while (![listenSocket acceptOnPort:listenPort error:&err]){
+            listenPort++;
+            if(listenPort > 10010) {
+                break;
+            }
+        }
+        if(listenPort < 10010) {
+            [self js:[NSString stringWithFormat:@"appSocketServerSuccess('%@','%d')", [TapUtils ip], listenPort]];
+        } else {
+            [self js:[NSString stringWithFormat:@"appSocketServerFailed('%@','%d')", [TapUtils ip], listenPort]];
+        }
+    }
+    if([@"socket-client" compare:data[@"what"]] == NSOrderedSame) {
+        //        socket = [[GCDAsyncUdpSocket alloc] initWithDelegate:self delegateQueue:dispatch_get_main_queue()];
+        //        NSError* error;
+        //        [socket ];
+        //       NSLog(@"%@", error);
+    }
+}
+
+- (void)socket:(GCDAsyncSocket *)sock didAcceptNewSocket:(GCDAsyncSocket *)newSocket {
+    NSLog(@"Accepted new socket from %@:%hu", [newSocket connectedHost], [newSocket connectedPort]);
+    remoteImageSize = 0;
+    remoteImageData = [[NSMutableData alloc] init];
+    connectedSocket = newSocket;
+    
+    NSString *welcomMessage = @"Hello from the server\r\n";
+    [connectedSocket writeData:[welcomMessage dataUsingEncoding:NSUTF8StringEncoding] withTimeout:-1 tag:0];
+    
+    [connectedSocket readDataWithTimeout:-1 tag:0];
+    
+}
+
+-(void)showIncomingFrame {
+    TapAppViewComponent* theViewComponent = nil;
+    for(TapAppViewComponent* viewComponent in viewComponents) {
+        if([viewComponent.conf[@"component"] isEqualToString:@"remote-screen"]) {
+            theViewComponent = viewComponent;
+            break;
+        }
+    }
+    remoteFrame = [NSData dataWithData:remoteImageData];
+    [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+        UIImage* image = [UIImage imageWithData:self->remoteFrame];
+        if(image.size.width != 0 && image.size.height != 0) {
+            ((UIImageView*)theViewComponent.view).image = image;
+        }
+    }];
+}
+
+-(void)readIncomingFrame:(NSData*)data {
+    if(remoteImageSize == 0) {
+        if([remoteImageData length] != 0) {
+            NSMutableData* leftData = [[NSMutableData alloc] initWithData:remoteImageData];
+            [leftData appendData:data];
+            remoteImageSize = 0;
+            remoteImageData = [[NSMutableData alloc] init];
+            [self readIncomingFrame:leftData];
+        } else {
+            [data getBytes:&remoteImageSize length:sizeof(remoteImageSize)];
+            if([data length] == sizeof(remoteImageSize)) {
+            } else {
+                NSData* leftData = [NSData dataWithData:[data subdataWithRange:NSMakeRange(sizeof(remoteImageSize), [data length]-sizeof(remoteImageSize))]];
+                [self readIncomingFrame:leftData];
+            }
+        }
+    } else {
+        if([data length] > remoteImageSize) {
+            [remoteImageData appendData:[data subdataWithRange:NSMakeRange(0, remoteImageSize)]];
+            [self showIncomingFrame];
+            NSData* leftData = [NSData dataWithData:[data subdataWithRange:NSMakeRange(remoteImageSize, [data length]-remoteImageSize)]];
+            remoteImageSize = 0;
+            remoteImageData = [[NSMutableData alloc] init];
+            if([leftData length] < sizeof(remoteImageSize)) {
+                [remoteImageData appendData:leftData];
+            } else {
+                [self readIncomingFrame:leftData];
+            }
+        } else if([data length] == remoteImageSize) {
+            [remoteImageData appendData:data];
+            [self showIncomingFrame];
+            remoteImageSize = 0;
+            remoteImageData = [[NSMutableData alloc] init];
+        } else {
+            [remoteImageData appendData:data];
+            remoteImageSize -= [data length];
+        }
+    }
+}
+
+- (void)socket:(GCDAsyncSocket *)sock didReadData:(NSData *)data withTag:(long)tag {
+    [sock readDataWithTimeout:-1 tag:0];
+    [self readIncomingFrame:data];
 }
 
 - (void)session:(MCSession *)session peer:(MCPeerID *)peerID didChangeState:(MCSessionState)state {
@@ -1043,30 +1141,9 @@
 }
 
 - (void)session:(MCSession *)session didReceiveData:(NSData *)data fromPeer:(MCPeerID *)peerID {
-    TapAppViewComponent* theViewComponent = nil;
-    for(TapAppViewComponent* viewComponent in viewComponents) {
-        if([viewComponent.conf[@"component"] isEqualToString:@"remote-screen"]) {
-            theViewComponent = viewComponent;
-            break;
-        }
-    }
-    if(theViewComponent != nil) {
-        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-            UIImage* image = [UIImage imageWithData:data];
-            if(image.size.width != 0 && image.size.height != 0) {
-                ((UIImageView*)theViewComponent.view).image = image;
-                [self remoteReady];
-            } else {
-                NSString* js = [NSString stringWithFormat:@"appProximityMessage(%@)", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]];
-                NSLog(@"%@", js);
-                [self js:js];
-            }
-        }];
-    } else {
-        NSString* js = [NSString stringWithFormat:@"appProximityMessage(%@)", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]];
-        NSLog(@"%@", js);
-        [self js:js];
-    }
+    NSString* js = [NSString stringWithFormat:@"appProximityMessage(%@)", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]];
+    NSLog(@"%@", js);
+    [self js:js];
 }
 
 - (void)session:(MCSession *)session didReceiveStream:(NSInputStream *)stream withName:(NSString *)streamName fromPeer:(MCPeerID *)peerID {
