@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'tap_framework_ios'
-  s.version          = '3.1.0'
+  s.version          = '3.2.0'
   s.summary          = 'Tap is a framework to build tappable iOS Apps'
   s.description      = <<-DESC
     Tappable Apps always needs Clickable Platforms :)
@@ -19,4 +19,5 @@ Pod::Spec.new do |s|
   s.dependency 'MMMaterialDesignSpinner'
   s.dependency 'ZipArchive'
   s.dependency 'FBSDKLoginKit'
+  s.dependency 'CocoaAsyncSocket'
 end

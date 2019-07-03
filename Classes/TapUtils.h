@@ -17,6 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (UIImage *)imageWithImage:(UIImage *)image scaledToSize:(CGSize)newSize;
 + (NSURL*)docFileUrl:(NSString*)fileName;
 + (NSURL*)docUrl;
++ (NSString*)ip;
 
 @end
 
