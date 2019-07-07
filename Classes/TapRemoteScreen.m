@@ -11,12 +11,11 @@
         //        isPen = NO;
         self.clipsToBounds = YES;
         videoScreen = [[UIView alloc] init];
-        np = [[NodePlayer alloc] init];
-        [np setPlayerView:videoScreen];
         screen = [[UIImageView alloc] init];
         [self addSubview:videoScreen];
         [self addSubview:screen];
         screen.alpha = 0;
+        player = nil;
     }
     return self;
 }
@@ -26,11 +25,14 @@
     videoScreen.frame = screen.frame = CGRectMake(0, 0, size.width, size.height);
 }
 
--(void)setIp:(NSString*)ip port:(int)port {
+-(void)setIp:(NSString*)ip port:(int)port impl:(NSString*)impl {
     self.ip = ip;
     self.port = port;
-    [np setInputUrl:[NSString stringWithFormat:@"rtsp://%@/", ip]];
-    [np start];
+    player = (TapPlayer*)[[NSClassFromString(impl) alloc] init];;
+    NSLog(@"%@", player);
+    [player setView:videoScreen];
+    [player setSource:[NSString stringWithFormat:@"rtsp://%@/", ip]];
+    [player play];
 }
 
 -(void)lock {
