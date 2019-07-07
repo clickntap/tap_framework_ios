@@ -13,6 +13,7 @@
 #import <EventKit/EventKit.h>
 #import <FBSDKCoreKit/FBSDKCoreKit.h>
 #import <PassKit/PassKit.h>
+#include <mach/mach_time.h>
 
 @implementation WKFullScreenWebView
 
@@ -34,7 +35,6 @@
     return self;
 }
 
-
 - (id)init {
     if (self = [super init]) {
         [self setup];
@@ -44,6 +44,7 @@
 
 -(void)setup {
     camera = nil;
+    services = [[NSMutableArray alloc] init];
     self.clipsToBounds = YES;
     viewComponents = [[NSMutableArray alloc] init];
     images = [[NSMutableDictionary alloc] init];
@@ -95,7 +96,11 @@
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(viewComponentRemove:) name:@"viewComponentRemove" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cameraMetadataObject:) name:@"cameraMetadataObject" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(remoteScreenTouch:) name:@"remoteScreenTouch" object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(painterLink) name:@"painterChanged" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(painterChanged) name:@"painterChanged" object:nil];
+}
+
+- (void)webView:(WKWebView *)webView didFailNavigation:(null_unspecified WKNavigation *)navigation withError:(NSError *)error {
+    NSLog(@"error: %@", error);
 }
 
 - (void)remoteScreenTouch:(NSNotification*)notification {
@@ -106,32 +111,41 @@
     }
 }
 
-- (void)painterLink {
-    if(appPeerID != nil) {
-        NSMutableDictionary* message = [[NSMutableDictionary alloc] init];
-        [message setObject:@"painter-link" forKey:@"what"];
-        NSData* messageData = [[TapUtils json:message] dataUsingEncoding:NSUTF8StringEncoding];
-        [self->mcSession sendData:messageData toPeers:@[self->appPeerID] withMode:MCSessionSendDataReliable error:nil];
-        if(parent) {
-            [parent js:@"appPainterLinked()"];
-        } else {
-            [self js:@"appPainterLinked()"];
+- (void)painterChanged {
+    TapPainter* painter = nil;
+    TapRemoteScreen* remoteScreen = nil;
+    for(TapAppViewComponent* viewComponent in viewComponents) {
+        if([viewComponent.conf[@"component"] isEqualToString:@"painter"]) {
+            painter = (TapPainter *)viewComponent.view;
+        }
+        if([viewComponent.conf[@"component"] isEqualToString:@"remote-screen"]) {
+            remoteScreen = (TapRemoteScreen *)viewComponent.view;
         }
     }
+    if(painter != nil && remoteScreen != nil) {
+        [self safePainterUploadImage];
+    }
+    [self js:@"appPainterChanged()"];
 }
 
-- (void)painterUnlink {
-    if(appPeerID != nil) {
-        NSMutableDictionary* message = [[NSMutableDictionary alloc] init];
-        [message setObject:@"painter-unlink" forKey:@"what"];
-        NSData* messageData = [[TapUtils json:message] dataUsingEncoding:NSUTF8StringEncoding];
-        [self->mcSession sendData:messageData toPeers:@[self->appPeerID] withMode:MCSessionSendDataReliable error:nil];
-        if(parent) {
-            [parent js:@"appPainterUnlinked()"];
-        } else {
-            [self js:@"appPainterUnlinked()"];
+-(void)safePainterUploadImage {
+    [NSObject cancelPreviousPerformRequestsWithTarget:self];
+    [self performSelector:@selector(painterUploadImage) withObject:nil afterDelay:0.5];
+}
+
+-(void)painterUploadImage {
+    TapPainter* painter = nil;
+    TapRemoteScreen* remoteScreen = nil;
+    for(TapAppViewComponent* viewComponent in viewComponents) {
+        if([viewComponent.conf[@"component"] isEqualToString:@"painter"]) {
+            painter = (TapPainter *)viewComponent.view;
+        }
+        if([viewComponent.conf[@"component"] isEqualToString:@"remote-screen"]) {
+            remoteScreen = (TapRemoteScreen *)viewComponent.view;
         }
     }
+    UIImage* image = [painter grab];
+    [remoteScreen performSelectorOnMainThread:@selector(uploadImage:) withObject:image waitUntilDone:NO];
 }
 
 - (void)swipeLeft {
@@ -284,7 +298,6 @@
 
 - (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
     NSDictionary* data = message.body;
-    //NSLog(@"%@", data);
     if([@"context" compare:data[@"what"]] == NSOrderedSame) {
         long deviceId = [[[NSUserDefaults standardUserDefaults] objectForKey:@"deviceId"] longValue];
         long userId = [[[NSUserDefaults standardUserDefaults] objectForKey:@"userId"] longValue];
@@ -410,6 +423,11 @@
             mcSession = [[MCSession alloc] initWithPeer:peerID securityIdentity:nil encryptionPreference:MCEncryptionNone];
             mcSession.delegate = self;
         }
+        if([@"bonjour" compare:data[@"type"]] == NSOrderedSame) {
+            serviceBrowser = [[NSNetServiceBrowser alloc] init];
+            serviceBrowser.delegate = self;
+            [serviceBrowser searchForServicesOfType:@"_http._tcp" inDomain:@""];
+        }
     }
     if([@"set" compare:data[@"what"]] == NSOrderedSame) {
         [[NSUserDefaults standardUserDefaults] setObject:data[@"value"] forKey:data[@"name"]];
@@ -444,7 +462,13 @@
         } else {
             [parameters addEntriesFromDictionary:data[@"params"]];
         }
-        NSMutableURLRequest *request = [[AFHTTPRequestSerializer serializer] requestWithMethod:@"POST" URLString:data[@"url"] parameters:parameters error:nil];
+        NSMutableURLRequest *request = nil;
+        if([@"http-get" compare:data[@"what"]] == NSOrderedSame) {
+            request = [[AFHTTPRequestSerializer serializer] requestWithMethod:@"GET" URLString:data[@"url"] parameters:parameters error:nil];
+        }
+        if([@"http-post" compare:data[@"what"]] == NSOrderedSame) {
+            request = [[AFHTTPRequestSerializer serializer] requestWithMethod:@"POST" URLString:data[@"url"] parameters:parameters error:nil];
+        }
         [request setTimeoutInterval:10];
         [request setValue:@"application/x-www-form-urlencoded; charset=UTF-8" forHTTPHeaderField:@"Content-Type"];
         NSURLSessionDataTask *dataTask = [[self afmanager] dataTaskWithRequest:request uploadProgress:^(NSProgress * uploadProgress) {
@@ -605,25 +629,50 @@
             }
         }
     }
-    if([@"painter-link" compare:data[@"what"]] == NSOrderedSame) {
-        [self painterLink];
+    if([@"painter-changed" compare:data[@"what"]] == NSOrderedSame) {
+        [self painterChanged];
     }
-    if([@"painter-unlink" compare:data[@"what"]] == NSOrderedSame) {
-        [self painterUnlink];
-    }
-    if([@"painter-frame" compare:data[@"what"]] == NSOrderedSame) {
+    if([@"remote-screen" compare:data[@"what"]] == NSOrderedSame) {
+        TapAppViewComponent* theViewComponent = nil;
         for(TapAppViewComponent* viewComponent in viewComponents) {
-            if([viewComponent.conf[@"component"] isEqualToString:@"painter"]) {
-                if([viewComponent.conf[@"id"] longValue] == [data[@"id"] longValue]) {
-                    TapPainter * painter = (TapPainter *)viewComponent.view;
-                    UIImage* image = [painter grab];
-                    if(appPeerID != nil) {
-                        NSData* imageAsData = UIImagePNGRepresentation(image);
-                        [mcSession sendData:imageAsData toPeers:@[appPeerID] withMode:MCSessionSendDataReliable error:nil];
-                    }
-                }
+            if([viewComponent.conf[@"component"] isEqualToString:@"remote-screen"]) {
+                theViewComponent = viewComponent;
+                break;
             }
         }
+        if(theViewComponent != nil) {
+            TapRemoteScreen* remoteScreen = (TapRemoteScreen*)theViewComponent.view;
+            [remoteScreen setIp:data[@"ip"] port:[data[@"port"] intValue]];
+        }
+        
+    }
+    if([@"remote-screen-lock" compare:data[@"what"]] == NSOrderedSame) {
+        TapAppViewComponent* theViewComponent = nil;
+        for(TapAppViewComponent* viewComponent in viewComponents) {
+            if([viewComponent.conf[@"component"] isEqualToString:@"remote-screen"]) {
+                theViewComponent = viewComponent;
+                break;
+            }
+        }
+        if(theViewComponent != nil) {
+            TapRemoteScreen* remoteScreen = (TapRemoteScreen*)theViewComponent.view;
+            [remoteScreen lock];
+        }
+        
+    }
+    if([@"remote-screen-unlock" compare:data[@"what"]] == NSOrderedSame) {
+        TapAppViewComponent* theViewComponent = nil;
+        for(TapAppViewComponent* viewComponent in viewComponents) {
+            if([viewComponent.conf[@"component"] isEqualToString:@"remote-screen"]) {
+                theViewComponent = viewComponent;
+                break;
+            }
+        }
+        if(theViewComponent != nil) {
+            TapRemoteScreen* remoteScreen = (TapRemoteScreen*)theViewComponent.view;
+            [remoteScreen unlock];
+        }
+        
     }
     if([@"animate" compare:data[@"what"]] == NSOrderedSame) {
         for(TapAppViewComponent* viewComponent in viewComponents) {
@@ -1000,104 +1049,6 @@
             }
         }];
     }
-    if([@"socket-server" compare:data[@"what"]] == NSOrderedSame) {
-        NSLog(@"IP: %@", [TapUtils ip]);
-        listenSocket = [[GCDAsyncSocket alloc] initWithDelegate:self delegateQueue:dispatch_get_main_queue()];
-        NSError *err = nil;
-        listenPort = 10000;
-        while (![listenSocket acceptOnPort:listenPort error:&err]){
-            listenPort++;
-            if(listenPort > 10010) {
-                break;
-            }
-        }
-        if(listenPort < 10010) {
-            [self js:[NSString stringWithFormat:@"appSocketServerSuccess('%@','%d')", [TapUtils ip], listenPort]];
-        } else {
-            [self js:[NSString stringWithFormat:@"appSocketServerFailed('%@','%d')", [TapUtils ip], listenPort]];
-        }
-    }
-    if([@"socket-client" compare:data[@"what"]] == NSOrderedSame) {
-        //        socket = [[GCDAsyncUdpSocket alloc] initWithDelegate:self delegateQueue:dispatch_get_main_queue()];
-        //        NSError* error;
-        //        [socket ];
-        //       NSLog(@"%@", error);
-    }
-}
-
-- (void)socket:(GCDAsyncSocket *)sock didAcceptNewSocket:(GCDAsyncSocket *)newSocket {
-    NSLog(@"Accepted new socket from %@:%hu", [newSocket connectedHost], [newSocket connectedPort]);
-    remoteImageSize = 0;
-    remoteImageData = [[NSMutableData alloc] init];
-    connectedSocket = newSocket;
-    
-    NSString *welcomMessage = @"Hello from the server\r\n";
-    [connectedSocket writeData:[welcomMessage dataUsingEncoding:NSUTF8StringEncoding] withTimeout:-1 tag:0];
-    
-    [connectedSocket readDataWithTimeout:-1 tag:0];
-    
-}
-
--(void)showIncomingFrame {
-    TapAppViewComponent* theViewComponent = nil;
-    for(TapAppViewComponent* viewComponent in viewComponents) {
-        if([viewComponent.conf[@"component"] isEqualToString:@"remote-screen"]) {
-            theViewComponent = viewComponent;
-            break;
-        }
-    }
-    remoteFrame = [NSData dataWithData:remoteImageData];
-    [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-        UIImage* image = [UIImage imageWithData:self->remoteFrame];
-        if(image.size.width != 0 && image.size.height != 0) {
-            ((UIImageView*)theViewComponent.view).image = image;
-        }
-    }];
-}
-
--(void)readIncomingFrame:(NSData*)data {
-    if(remoteImageSize == 0) {
-        if([remoteImageData length] != 0) {
-            NSMutableData* leftData = [[NSMutableData alloc] initWithData:remoteImageData];
-            [leftData appendData:data];
-            remoteImageSize = 0;
-            remoteImageData = [[NSMutableData alloc] init];
-            [self readIncomingFrame:leftData];
-        } else {
-            [data getBytes:&remoteImageSize length:sizeof(remoteImageSize)];
-            if([data length] == sizeof(remoteImageSize)) {
-            } else {
-                NSData* leftData = [NSData dataWithData:[data subdataWithRange:NSMakeRange(sizeof(remoteImageSize), [data length]-sizeof(remoteImageSize))]];
-                [self readIncomingFrame:leftData];
-            }
-        }
-    } else {
-        if([data length] > remoteImageSize) {
-            [remoteImageData appendData:[data subdataWithRange:NSMakeRange(0, remoteImageSize)]];
-            [self showIncomingFrame];
-            NSData* leftData = [NSData dataWithData:[data subdataWithRange:NSMakeRange(remoteImageSize, [data length]-remoteImageSize)]];
-            remoteImageSize = 0;
-            remoteImageData = [[NSMutableData alloc] init];
-            if([leftData length] < sizeof(remoteImageSize)) {
-                [remoteImageData appendData:leftData];
-            } else {
-                [self readIncomingFrame:leftData];
-            }
-        } else if([data length] == remoteImageSize) {
-            [remoteImageData appendData:data];
-            [self showIncomingFrame];
-            remoteImageSize = 0;
-            remoteImageData = [[NSMutableData alloc] init];
-        } else {
-            [remoteImageData appendData:data];
-            remoteImageSize -= [data length];
-        }
-    }
-}
-
-- (void)socket:(GCDAsyncSocket *)sock didReadData:(NSData *)data withTag:(long)tag {
-    [sock readDataWithTimeout:-1 tag:0];
-    [self readIncomingFrame:data];
 }
 
 - (void)session:(MCSession *)session peer:(MCPeerID *)peerID didChangeState:(MCSessionState)state {
@@ -1130,15 +1081,15 @@
 - (void)browserViewControllerWasCancelled:(MCBrowserViewController *)browserViewController {
     [self browserViewControllerDidFinish:browserViewController];
 }
-
--(void)remoteReady {
-    if(self->appPeerID != nil) {
-        NSMutableDictionary* message = [[NSMutableDictionary alloc] init];
-        [message setObject:@"remote-ready" forKey:@"what"];
-        NSData* messageData = [[TapUtils json:message] dataUsingEncoding:NSUTF8StringEncoding];
-        [self->mcSession sendData:messageData toPeers:@[self->appPeerID] withMode:MCSessionSendDataReliable error:nil];
-    }
-}
+//
+//-(void)remoteReady {
+//    if(self->appPeerID != nil) {
+//        NSMutableDictionary* message = [[NSMutableDictionary alloc] init];
+//        [message setObject:@"remote-ready" forKey:@"what"];
+//        NSData* messageData = [[TapUtils json:message] dataUsingEncoding:NSUTF8StringEncoding];
+//        [self->mcSession sendData:messageData toPeers:@[self->appPeerID] withMode:MCSessionSendDataReliable error:nil];
+//    }
+//}
 
 - (void)session:(MCSession *)session didReceiveData:(NSData *)data fromPeer:(MCPeerID *)peerID {
     NSString* js = [NSString stringWithFormat:@"appProximityMessage(%@)", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]];
@@ -1162,18 +1113,6 @@
 
 - (void)disconnectPeer {
     appPeerID = nil;
-    TapAppViewComponent* theViewComponent = nil;
-    for(TapAppViewComponent* viewComponent in viewComponents) {
-        if([viewComponent.conf[@"component"] isEqualToString:@"remote-screen"]) {
-            theViewComponent = viewComponent;
-            break;
-        }
-    }
-    if(theViewComponent != nil) {
-        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-            ((UIImageView*)theViewComponent.view).image = nil;
-        }];
-    }
     NSString* js = [NSString stringWithFormat:@"appProximityNotConnected()"];
     [self js:js];
 }
@@ -1262,6 +1201,20 @@
                                                                            }];
         [uploadTask resume];
     }];
+}
+
+- (void)netServiceBrowser:(NSNetServiceBrowser *)browser didFindService:(NSNetService *)service moreComing:(BOOL)moreComing {
+    [services addObject:service];
+    service.delegate = self;
+    [service resolveWithTimeout:10];
+}
+
+- (void)netServiceDidResolveAddress:(NSNetService *)service {
+    NSMutableDictionary* result = [[NSMutableDictionary alloc] init];
+    [result setObject:[service name] forKey:@"name"];
+    [result setObject:[service hostName] forKey:@"host"];
+    [result setObject:[NSNumber numberWithInteger:[service port]] forKey:@"port"];
+    [self js:[NSString stringWithFormat:@"appNetServiceDidResolveAddress(%@)", [TapUtils json:result]]];
 }
 
 -(void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray<CLLocation *> *)locations {

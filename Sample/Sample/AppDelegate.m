@@ -1,5 +1,6 @@
 #import "AppDelegate.h"
 #import <tap_framework_ios/TapApp.h>
+#import <tap_framework_ios/TapUtils.h>
 
 @implementation AppDelegate
 
