@@ -1,11 +1,11 @@
 #import <UIKit/UIKit.h>
-#import <NodeMediaClient/NodeMediaClient.h>
+#import "TapPlayer.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface TapRemoteScreen : UIView {
     //    BOOL isPen;
-    NodePlayer* np;
+    TapPlayer* player;
     UIImageView* screen;
     UIView* videoScreen;
     NSString* ip;
@@ -14,9 +14,10 @@ NS_ASSUME_NONNULL_BEGIN
 }
 
 @property (nonatomic, copy) NSString* ip;
+@property (nonatomic, copy) NSString* impl;
 @property int port;
 
--(void)setIp:(NSString*)ip port:(int)port;
+-(void)setIp:(NSString*)ip port:(int)port impl:(NSString*)impl;
 -(void)lock;
 -(void)unlock;
 -(void)uploadImage:(UIImage*)image;

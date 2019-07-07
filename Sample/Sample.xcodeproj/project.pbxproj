@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A5683255BAD37475B3883B44 /* Pods_Sample.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5AE2C7F95A99943AEE76A356 /* Pods_Sample.framework */; };
+		E403174D22D2728400EBD38F /* VLCPlayer.m in Sources */ = {isa = PBXBuildFile; fileRef = E403174C22D2728400EBD38F /* VLCPlayer.m */; };
 		E4CA2A3522BE9F9D00C7F15A /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = E4CA2A3422BE9F9D00C7F15A /* AppDelegate.m */; };
 		E4CA2A3D22BE9F9D00C7F15A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E4CA2A3C22BE9F9D00C7F15A /* Assets.xcassets */; };
 		E4CA2A4022BE9F9D00C7F15A /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = E4CA2A3E22BE9F9D00C7F15A /* LaunchScreen.storyboard */; };
@@ -17,6 +18,8 @@
 /* Begin PBXFileReference section */
 		5AE2C7F95A99943AEE76A356 /* Pods_Sample.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Sample.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		83BCC71578140DC02A19E618 /* Pods-Sample.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Sample.release.xcconfig"; path = "Target Support Files/Pods-Sample/Pods-Sample.release.xcconfig"; sourceTree = "<group>"; };
+		E403174B22D2728400EBD38F /* VLCPlayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VLCPlayer.h; sourceTree = "<group>"; };
+		E403174C22D2728400EBD38F /* VLCPlayer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VLCPlayer.m; sourceTree = "<group>"; };
 		E4CA2A3022BE9F9D00C7F15A /* Sample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Sample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E4CA2A3322BE9F9D00C7F15A /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		E4CA2A3422BE9F9D00C7F15A /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -79,6 +82,8 @@
 			children = (
 				E4CA2A3322BE9F9D00C7F15A /* AppDelegate.h */,
 				E4CA2A3422BE9F9D00C7F15A /* AppDelegate.m */,
+				E403174B22D2728400EBD38F /* VLCPlayer.h */,
+				E403174C22D2728400EBD38F /* VLCPlayer.m */,
 				E4CA2A3C22BE9F9D00C7F15A /* Assets.xcassets */,
 				E4CA2A3E22BE9F9D00C7F15A /* LaunchScreen.storyboard */,
 				E4CA2A4122BE9F9D00C7F15A /* Info.plist */,
@@ -201,6 +206,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E4CA2A4322BE9F9D00C7F15A /* main.m in Sources */,
+				E403174D22D2728400EBD38F /* VLCPlayer.m in Sources */,
 				E4CA2A3522BE9F9D00C7F15A /* AppDelegate.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -338,6 +344,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = QA7RQGU7QC;
+				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Sample/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -357,6 +364,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = QA7RQGU7QC;
+				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Sample/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = (

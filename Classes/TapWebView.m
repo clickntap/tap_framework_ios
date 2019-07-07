@@ -642,7 +642,7 @@
         }
         if(theViewComponent != nil) {
             TapRemoteScreen* remoteScreen = (TapRemoteScreen*)theViewComponent.view;
-            [remoteScreen setIp:data[@"ip"] port:[data[@"port"] intValue]];
+            [remoteScreen setIp:data[@"ip"] port:[data[@"port"] intValue] impl:data[@"impl"]];
         }
         
     }
