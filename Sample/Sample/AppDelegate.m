@@ -9,6 +9,15 @@
     if(launchOptions != nil) {
         [options setObject:launchOptions forKey:@"launchOptions"];
     }
+    [options setObject:@"http://monoedit.clickntap.com/preview.app" forKey:@"baseUrl"];
+    [options setObject:@"http://monoedit.clickntap.com/api/version/sod/release" forKey:@"appUrl"];
+    [options setObject:@"0" forKey:@"developer"];
+    
+    [options setObject:@"#ffffff" forKey:@"backgroundColor"];
+    [options setObject:@"#46a29a" forKey:@"color"];
+    [options setObject:@"0" forKey:@"statusBar"];
+    [options setObject:@"65" forKey:@"projectId"];
+    [options setObject:@"0" forKey:@"fullScreen"];
     [[TapApp sharedInstance] setApp:options];
     return YES;
 }

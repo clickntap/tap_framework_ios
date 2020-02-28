@@ -298,6 +298,7 @@
 
 - (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
     NSMutableDictionary* data = [[NSMutableDictionary alloc] initWithDictionary:message.body];
+    NSLog(@"%@", data);
     if([@"context" compare:data[@"what"]] == NSOrderedSame) {
         long deviceId = [[[NSUserDefaults standardUserDefaults] objectForKey:@"deviceId"] longValue];
         long userId = [[[NSUserDefaults standardUserDefaults] objectForKey:@"userId"] longValue];
@@ -450,6 +451,26 @@
             [self js:[NSString stringWithFormat:@"%@()", data[@"callback"]]];
         }
     }
+    if([@"dialog-edit" compare:data[@"what"]] == NSOrderedSame) {
+        UIAlertController * alert = [UIAlertController alertControllerWithTitle: nil message: data[@"message"] preferredStyle:UIAlertControllerStyleAlert];
+        [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+            textField.placeholder = data[@"placeholder"];
+            textField.text = data[@"text"];
+            textField.clearButtonMode = UITextFieldViewModeWhileEditing;
+        }];
+        [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            NSArray * textfields = alert.textFields;
+            UITextField * namefield = textfields[0];
+            NSString* value = namefield.text;
+            [data setValue:value forKey:@"value"];
+            [self js:[NSString stringWithFormat:@"appDialogEdit(%@)", [TapUtils json:data]]];
+        }]];
+        UIAlertAction* cancelAction = [UIAlertAction actionWithTitle:@"Annulla" style:UIAlertActionStyleCancel handler:^(UIAlertAction * action) {
+            [self js:[NSString stringWithFormat:@"appDialogEditCancel(%@)", [TapUtils json:data]]];
+        }];
+        [alert addAction:cancelAction];
+        [[[TapApp sharedInstance] navigationController] presentViewController:alert animated:YES completion:nil];
+    }
     if([@"http-get" compare:data[@"what"]] == NSOrderedSame || [@"http-post" compare:data[@"what"]] == NSOrderedSame) {
         if(data[@"mode"] == nil || [@"background" compare:data[@"mode"]] != NSOrderedSame) {
             [self waitOn];
@@ -468,27 +489,6 @@
         }
         if([@"http-post" compare:data[@"what"]] == NSOrderedSame) {
             request = [[AFHTTPRequestSerializer serializer] requestWithMethod:@"POST" URLString:data[@"url"] parameters:parameters error:nil];
-        }
-        if([@"dialog-edit" compare:data[@"what"]] == NSOrderedSame) {
-            UIAlertController * alert = [UIAlertController alertControllerWithTitle: nil message: data[@"message"] preferredStyle:UIAlertControllerStyleAlert];
-            [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
-                textField.placeholder = data[@"placeholder"];
-                textField.text = data[@"text"];
-                textField.textColor = [UIColor blackColor];
-                textField.clearButtonMode = UITextFieldViewModeWhileEditing;
-            }];
-            [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-                NSArray * textfields = alert.textFields;
-                UITextField * namefield = textfields[0];
-                NSString* value = namefield.text;
-                [data setValue:value forKey:@"value"];
-                [self js:[NSString stringWithFormat:@"appDialogEdit(%@)", [TapUtils json:data]]];
-            }]];
-            UIAlertAction* cancelAction = [UIAlertAction actionWithTitle:@"Annulla" style:UIAlertActionStyleCancel handler:^(UIAlertAction * action) {
-                [self js:[NSString stringWithFormat:@"appDialogEditCancel(%@)", [TapUtils json:data]]];
-            }];
-            [alert addAction:cancelAction];
-            [[[TapApp sharedInstance] navigationController] presentViewController:alert animated:YES completion:nil];
         }
         [request setTimeoutInterval:10];
         [request setValue:@"application/x-www-form-urlencoded; charset=UTF-8" forHTTPHeaderField:@"Content-Type"];
