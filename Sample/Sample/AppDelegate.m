@@ -29,5 +29,4 @@
 - (void)application:(UIApplication *)app didFailToRegisterForRemoteNotificationsWithError:(NSError *)err {
     [[TapApp sharedInstance] didFailToRegisterForRemoteNotificationsWithError:err];
 }
-
 @end

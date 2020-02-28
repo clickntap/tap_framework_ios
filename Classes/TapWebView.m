@@ -278,10 +278,10 @@
     center.delegate = self;
     [center requestAuthorizationWithOptions:(UNAuthorizationOptionSound | UNAuthorizationOptionAlert | UNAuthorizationOptionBadge)
                           completionHandler:^(BOOL granted, NSError * _Nullable error) {
-                              if(granted) {
-                                  //NSLog(@"push granted:%@ error:%@", granted?@"YES":@"NO",  error);
-                              }
-                          }];
+        if(granted) {
+            //NSLog(@"push granted:%@ error:%@", granted?@"YES":@"NO",  error);
+        }
+    }];
 }
 
 - (void)userNotificationCenter:(UNUserNotificationCenter *)center willPresentNotification:(UNNotification *)notification withCompletionHandler:(void (^)(UNNotificationPresentationOptions options))completionHandler  {
@@ -297,7 +297,7 @@
 }
 
 - (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
-    NSDictionary* data = message.body;
+    NSMutableDictionary* data = [[NSMutableDictionary alloc] initWithDictionary:message.body];
     if([@"context" compare:data[@"what"]] == NSOrderedSame) {
         long deviceId = [[[NSUserDefaults standardUserDefaults] objectForKey:@"deviceId"] longValue];
         long userId = [[[NSUserDefaults standardUserDefaults] objectForKey:@"userId"] longValue];
@@ -468,6 +468,27 @@
         }
         if([@"http-post" compare:data[@"what"]] == NSOrderedSame) {
             request = [[AFHTTPRequestSerializer serializer] requestWithMethod:@"POST" URLString:data[@"url"] parameters:parameters error:nil];
+        }
+        if([@"dialog-edit" compare:data[@"what"]] == NSOrderedSame) {
+            UIAlertController * alert = [UIAlertController alertControllerWithTitle: nil message: data[@"message"] preferredStyle:UIAlertControllerStyleAlert];
+            [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+                textField.placeholder = data[@"placeholder"];
+                textField.text = data[@"text"];
+                textField.textColor = [UIColor blackColor];
+                textField.clearButtonMode = UITextFieldViewModeWhileEditing;
+            }];
+            [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                NSArray * textfields = alert.textFields;
+                UITextField * namefield = textfields[0];
+                NSString* value = namefield.text;
+                [data setValue:value forKey:@"value"];
+                [self js:[NSString stringWithFormat:@"appDialogEdit(%@)", [TapUtils json:data]]];
+            }]];
+            UIAlertAction* cancelAction = [UIAlertAction actionWithTitle:@"Annulla" style:UIAlertActionStyleCancel handler:^(UIAlertAction * action) {
+                [self js:[NSString stringWithFormat:@"appDialogEditCancel(%@)", [TapUtils json:data]]];
+            }];
+            [alert addAction:cancelAction];
+            [[[TapApp sharedInstance] navigationController] presentViewController:alert animated:YES completion:nil];
         }
         [request setTimeoutInterval:10];
         [request setValue:@"application/x-www-form-urlencoded; charset=UTF-8" forHTTPHeaderField:@"Content-Type"];
@@ -1194,11 +1215,11 @@
         } error:nil];
         NSURLSessionUploadTask *uploadTask = [[self afmanager] uploadTaskWithStreamedRequest:request progress:^(NSProgress * _Nonnull uploadProgress) {}
                                                                            completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) {
-                                                                               [self waitOff];
-                                                                               NSData *jsonData = [NSJSONSerialization dataWithJSONObject:responseObject options:(NSJSONWritingOptions)0 error:&error];
-                                                                               NSString* js = [NSString stringWithFormat:@"%@(%@)", self.photoSettings[@"callback"], [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding]];
-                                                                               [self js:js];
-                                                                           }];
+            [self waitOff];
+            NSData *jsonData = [NSJSONSerialization dataWithJSONObject:responseObject options:(NSJSONWritingOptions)0 error:&error];
+            NSString* js = [NSString stringWithFormat:@"%@(%@)", self.photoSettings[@"callback"], [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding]];
+            [self js:js];
+        }];
         [uploadTask resume];
     }];
 }
